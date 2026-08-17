@@ -502,7 +502,7 @@ def unwrap_uvs(object_name: str, method: str = "angle_based", margin: float = 0.
         if error:
             return error
         mesh = obj.data
-        layer = _ensure_uv_layer(mesh, set_active=True)
+        _ensure_uv_layer(mesh, set_active=True)
         if method_key == "smart":
             operator_result = _run_uv_edit_operator(
                 bpy,
@@ -520,6 +520,17 @@ def unwrap_uvs(object_name: str, method: str = "angle_based", margin: float = 0.
                 margin=float(margin),
             )
         _update_mesh(mesh)
+
+        # Edit-mode UV operators can rebuild UV-layer RNA data. Reacquire the
+        # active layer instead of dereferencing a wrapper captured beforehand.
+        mesh = obj.data
+        layer = _get_uv_layer(mesh)
+        if layer is None:
+            return skill_error(
+                f"UV unwrap completed but no active UV map remains on {object_name}",
+                "Inspect the mesh UV layers and retry the unwrap.",
+            )
+
         return skill_success(
             f"Unwrapped UVs on {object_name} using {method_key}",
             uv_map=layer.name,
@@ -563,6 +574,18 @@ def pack_uvs(
             margin=float(margin),
             rotate=bool(rotate),
         )
+        _update_mesh(mesh)
+
+        # pack_islands can invalidate the pre-operator MeshUVLoopLayer wrapper
+        # on newer Blender versions. Reacquire before normalize/readback.
+        mesh = obj.data
+        layer = _get_uv_layer(mesh)
+        if layer is None:
+            return skill_error(
+                f"UV packing completed but no active UV map remains on {object_name}",
+                "Inspect the mesh UV layers and retry packing.",
+            )
+
         if normalize:
             normalize_result = _normalize_layer(layer, float(margin))
         else:
