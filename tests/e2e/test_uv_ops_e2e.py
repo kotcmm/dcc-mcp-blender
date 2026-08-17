@@ -45,3 +45,31 @@ class TestUvOpsE2E:
         assert normalize_result["success"] is True
         assert normalize_result["context"]["bounds"]["min"] == [0.0, 0.0]
         assert normalize_result["context"]["bounds"]["max"] == [1.0, 1.0]
+
+    def test_smart_unwrap_and_pack_reacquire_uv_layer_after_operator(self):
+        bpy.ops.mesh.primitive_cube_add()
+        cube_name = bpy.context.active_object.name
+
+        unwrap_mod = load_skill("blender-uv-ops", "unwrap_uvs")
+        unwrap_result = unwrap_mod.unwrap_uvs(
+            object_name=cube_name,
+            method="smart",
+            margin=0.02,
+        )
+        assert unwrap_result["success"] is True
+        assert unwrap_result["context"]["uv_coordinate_count"] > 0
+
+        pack_mod = load_skill("blender-uv-ops", "pack_uvs")
+        pack_result = pack_mod.pack_uvs(
+            object_name=cube_name,
+            margin=0.02,
+            rotate=True,
+            normalize=True,
+        )
+        assert pack_result["success"] is True
+
+        info_mod = load_skill("blender-uv-ops", "get_uv_info")
+        info = info_mod.get_uv_info(object_name=cube_name)
+        assert info["success"] is True
+        assert info["context"]["has_uvs"] is True
+        assert info["context"]["uv_coordinate_count"] > 0
